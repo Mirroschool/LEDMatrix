@@ -6,6 +6,8 @@
 #include "RainbowAnimation.h"
 #include "CylonAnimation.h"
 
+#define ESP_AP true
+
 void onSettings(AsyncWebServerRequest *request) {
   char responseBuf[100];
   sprintf(
@@ -24,7 +26,7 @@ uint8_t currentBrightness = 64;
 void setup() {
     Serial.begin(115200);
     setupFastLED();
-    setupWiFi("OpenWRT", "22446688");
+    setupWiFi("OpenWRT", "22446688", ESP_AP);
 
     server.on("/settings/", onSettings);
 

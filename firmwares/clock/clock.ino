@@ -9,6 +9,8 @@
 #include "pb_decode.h"
 #include "clock.pb.h"
 
+#define ESP_AP true
+
 class Activity {
  public:
   CRGB m_backgroundColor = CRGB::Black;
@@ -321,7 +323,7 @@ void onEvent(AsyncWebSocket* server, AsyncWebSocketClient* client,
 void setup() {
   Serial.begin(115200);
   setupFastLED();
-  setupWiFi("OpenWRT", "22446688");
+  setupWiFi("OpenWRT", "22446688", ESP_AP);
 
   clockModeWS.onEvent(onEvent);
   server.addHandler(&clockModeWS);

@@ -7,6 +7,8 @@
 #include "pb_decode.h"
 #include "pixel.pb.h"
 
+#define ESP_AP true
+
 AsyncWebSocket canvasWS("/canvas/ws");
 
 
@@ -68,7 +70,7 @@ void setup(){
   Serial.begin(115200);
   randomSeed(analogRead(A0));
   setupFastLED();
-  setupWiFi("OpenWRT", "22446688");
+  setupWiFi("OpenWRT", "22446688", ESP_AP);
   
   canvasWS.onEvent(onEvent);
   server.addHandler(&canvasWS);

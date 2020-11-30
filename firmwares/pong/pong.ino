@@ -3,6 +3,8 @@
 
 #include <LEDMatrixServer.h>
 
+#define ESP_AP true
+
 struct pad_t {
     CRGB color = CRGB(255, 255, 255);
     uint8_t x, y0, y1;
@@ -211,7 +213,7 @@ void setup(){
     Serial.begin(115200);
     randomSeed(analogRead(A0));
     setupFastLED();
-    setupWiFi("OpenWRT", "22446688");
+    setupWiFi("OpenWRT", "22446688", ESP_AP);
     server.on("/settings/", onSettings);    
     gamesWS.onEvent(onEvent);
     server.addHandler(&gamesWS);
