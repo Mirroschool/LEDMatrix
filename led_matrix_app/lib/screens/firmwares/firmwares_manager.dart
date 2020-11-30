@@ -24,6 +24,10 @@ class FirmwaresManager extends StatelessWidget {
         return Stopwatch();
       case "creepingLine":
         return CreepingLine();
+      case "animations":
+        return AnimationSelectStatefulWidget();
+      case "games":
+        return GameSelectionStatefulWidget();
 
     }
     return Container(
