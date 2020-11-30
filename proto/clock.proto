@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+import "nanopb.proto";
+
+message ClockMessage {
+  int32 mode_id = 1;
+  int32 timestamp = 2;
+  bytes text = 3 [(nanopb).max_size = 255, (nanopb).fixed_length = true];
+  
+  int32 bg_r = 4;
+  int32 bg_g = 5;
+  int32 bg_b = 6;
+
+  int32 fg_r = 7;
+  int32 fg_g = 8;
+  int32 fg_b = 9;
+}

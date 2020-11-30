@@ -46,11 +46,16 @@ class CreepingLine : public Activity {
   void setText(uint8_t creepingText[], uint8_t textLength) {
     m_offset = 0;
     FastLED.clear();
+    memset(m_linesBuffer, 0, 1000);
     memset(m_linesBuffer, 0, MATRIX_WIDTH);
 
     uint16_t linesCount = MATRIX_WIDTH;
     for (uint8_t i = 0; i < textLength; i++) {
       uint8_t codePoint = creepingText[i];
+      if (codePoint == 0) {
+        break;
+      }
+
       for (uint8_t j = 0; j < 5; j++) {
         uint8_t glyphLine =
             pgm_read_byte(&fontGlyphs[getGlyphIndexByCodePoint(codePoint)][j]);
@@ -185,148 +190,124 @@ void onModeChange(AsyncWebServerRequest* request) {
           String text = request->getParam("text", true)->value();
           Serial.println(text);
 
-          uint8_t cp1251Buf[255], bufId, currentByte;
+          line.setText((uint8_t*)&text[0], text.length());
+          currentActivity = &line;
 
-          for (int i = 0; i < text.length(); i++) {
-            currentByte = text[i];
-            Serial.println(currentByte);
-
-            line.setText((uint8_t*)&text[0], text.length());
-            currentActivity = &line;
-
-            responseMessage = "ok";
-            responseCode = 200;
-          }
-          else {
-            responseMessage = "Bad text";
-            responseCode = 404;
-          }
-
+          responseMessage = "ok";
+          responseCode = 200;
           break;
-
-          case 2:
-            currentActivity = &stopwatch;
-            stopwatch.reset();
-
-            responseMessage = "ok";
-            responseCode = 200;
-            break;
-
-          case 3:
-            if (request->hasParam("time", true)) {
-              uint32_t timestamp =
-                  request->getParam("time", true)->value().toInt();
-              clock1.setTime(timestamp);
-              currentActivity = &clock1;
-
-              responseMessage = "ok";
-              responseCode = 200;
-            } else {
-              responseMessage = "Bad time";
-              responseCode = 404;
-            }
-            break;
-          default:
-            responseMessage = "Bad mode";
-            responseCode = 404;
-            break;
+        } else {
+          responseMessage = "bad text";
+          responseCode = 404;
+          break;
         }
-    }
-    else {
-      responseMessage = "Malformed request";
-      responseCode = 404;
-    }
 
-    request->send(responseCode, "text/plain", responseMessage);
-  }
+      case 2:
+        currentActivity = &stopwatch;
+        stopwatch.reset();
 
-  void onFPSChange(AsyncWebServerRequest * request) {
-    String responseMessage, rawFPS;
-    int responseCode;
-
-    if (request->hasParam("fps", true)) {
-      rawFPS = request->getParam("fps", true)->value();
-      uint8_t fps = rawFPS.toInt();
-      line.setFPS(fps);
-      responseMessage = "ok";
-      responseCode = 200;
-    } else {
-      responseMessage = "Malformed request";
-      responseCode = 404;
-    }
-
-    request->send(responseCode, "text/plain", responseMessage);
-  }
-
-  void onSettings(AsyncWebServerRequest * request) {
-    char responseBuf[100];
-    sprintf(responseBuf,
-            "{\"modes\":[\"clock\", \"stopwatch\", "
-            "\"creepingLine\"],\"width\":\"%d\",\"height\":\"%d\"}",  // format
-            MATRIX_WIDTH,
-            MATRIX_HEIGHT);
-    request->send(200, "application/json", responseBuf);
-  }
-
-  AsyncWebSocket clockModeWS("/clock/ws");
-
-  void onEvent(AsyncWebSocket * server, AsyncWebSocketClient * client,
-               AwsEventType type, void* arg, uint8_t* data, size_t len) {
-    switch (type) {
-      case WS_EVT_CONNECT:
-        Serial.printf("WebSocket client #%u connected from %s\n", client->id(),
-                      client->remoteIP().toString().c_str());
+        responseMessage = "ok";
+        responseCode = 200;
         break;
-      case WS_EVT_DISCONNECT:
-        Serial.printf("WebSocket client #%u disconnected\n", client->id());
+
+      case 3:
+        if (request->hasParam("time", true)) {
+          uint32_t timestamp = request->getParam("time", true)->value().toInt();
+          clock1.setTime(timestamp);
+          currentActivity = &clock1;
+
+          responseMessage = "ok";
+          responseCode = 200;
+        } else {
+          responseMessage = "Bad time";
+          responseCode = 404;
+        }
         break;
-      case WS_EVT_DATA: {
-        AwsFrameInfo* frameInfo = (AwsFrameInfo*)arg;
-        if (frameInfo->final && frameInfo->index == 0 &&
-            frameInfo->len == len) {
-          ClockMessage message = ClockMessage_init_zero;
-          pb_istream_t inputStream = pb_istream_from_buffer(data, len);
-          bool status = pb_decode(&inputStream, ClockMessage_fields, &message);
+      default:
+        responseMessage = "Bad mode";
+        responseCode = 404;
+        break;
+    }
+  } else {
+    responseMessage = "Malformed request";
+    responseCode = 404;
+  }
 
-          if (!status) {
-            Serial.printf("Decoding failed: %s\n", PB_GET_ERROR(&inputStream));
-            return;
-          }
+  request->send(responseCode, "text/plain", responseMessage);
+}
 
+void onFPSChange(AsyncWebServerRequest* request) {
+  String responseMessage, rawFPS;
+  int responseCode;
+
+  if (request->hasParam("fps", true)) {
+    rawFPS = request->getParam("fps", true)->value();
+    uint8_t fps = rawFPS.toInt();
+    line.setFPS(fps);
+    responseMessage = "ok";
+    responseCode = 200;
+  } else {
+    responseMessage = "Malformed request";
+    responseCode = 404;
+  }
+
+  request->send(responseCode, "text/plain", responseMessage);
+}
+
+void onSettings(AsyncWebServerRequest* request) {
+  char responseBuf[100];
+  sprintf(responseBuf,
+          "{\"modes\":[\"clock\", \"stopwatch\", "
+          "\"creepingLine\"],\"width\":\"%d\",\"height\":\"%d\"}",  // format
+          MATRIX_WIDTH,
+          MATRIX_HEIGHT);
+  request->send(200, "application/json", responseBuf);
+}
+
+AsyncWebSocket clockModeWS("/clock/ws");
+
+void onEvent(AsyncWebSocket* server, AsyncWebSocketClient* client,
+             AwsEventType type, void* arg, uint8_t* data, size_t len) {
+  switch (type) {
+    case WS_EVT_CONNECT:
+      Serial.printf("WebSocket client #%u connected from %s\n", client->id(),
+                    client->remoteIP().toString().c_str());
+      break;
+    case WS_EVT_DISCONNECT:
+      Serial.printf("WebSocket client #%u disconnected\n", client->id());
+      break;
+    case WS_EVT_DATA: {
+      AwsFrameInfo* frameInfo = (AwsFrameInfo*)arg;
+      if (frameInfo->final && frameInfo->index == 0 && frameInfo->len == len) {
+        ClockMessage message = ClockMessage_init_zero;
+        pb_istream_t inputStream = pb_istream_from_buffer(data, len);
+        bool status = pb_decode(&inputStream, ClockMessage_fields, &message);
+
+        if (!status) {
+          Serial.printf("Decoding failed: %s\n", PB_GET_ERROR(&inputStream));
+          return;
+        }
+
+        switch (message.mode_id) {
           case 1:
-            line.setText(message.text, message.text.length);
+            line.setText(message.text, 255);
             currentActivity = &line;
             break;
 
           case 2:
             currentActivity = &stopwatch;
             stopwatch.reset();
-
-            responseMessage = "ok";
-            responseCode = 200;
             break;
 
           case 3:
-            if (request->hasParam("time", true)) {
-              uint32_t timestamp =
-                  request->getParam("time", true)->value().toInt();
-              clock1.setTime(timestamp);
-              currentActivity = &clock1;
-
-              responseMessage = "ok";
-              responseCode = 200;
-            } else {
-              responseMessage = "Bad time";
-              responseCode = 404;
-            }
+            clock1.setTime(message.timestamp);
+            currentActivity = &clock1;
             break;
           default:
-            responseMessage = "Bad mode";
-            responseCode = 404;
             break;
         }
-      } break;
-    }
+      }
+    } break;
 
     case WS_EVT_PONG:
       break;
@@ -335,21 +316,25 @@ void onModeChange(AsyncWebServerRequest* request) {
     default:
       break;
   }
+}
 
-  void setup() {
-    Serial.begin(115200);
-    setupFastLED();
-    setupWiFi("OpenWRT", "22446688");
+void setup() {
+  Serial.begin(115200);
+  setupFastLED();
+  setupWiFi("OpenWRT", "22446688");
 
-    server.on("/settings/", onSettings);
-    server.on("/fps/", HTTP_POST, onFPSChange);
-    server.on("/modes/", HTTP_POST, onModeChange);
-    server.begin();
+  clockModeWS.onEvent(onEvent);
+  server.addHandler(&clockModeWS);
 
-    currentActivity = &stopwatch;
-  }
+  server.on("/settings/", onSettings);
+  server.on("/fps/", HTTP_POST, onFPSChange);
+  server.on("/modes/", HTTP_POST, onModeChange);
+  server.begin();
 
-  void loop() {
-    clockModeWS.cleanupClients();
-    currentActivity->render();
-  }
+  currentActivity = &stopwatch;
+}
+
+void loop() {
+  clockModeWS.cleanupClients();
+  currentActivity->render();
+}

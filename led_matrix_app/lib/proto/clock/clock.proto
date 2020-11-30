@@ -1,9 +1,0 @@
-syntax = "proto3";
-
-import "nanopb.proto";
-
-message ClockMessage {
-  int32 mode_id = 1;
-  int32 timestamp = 2;
-  bytes text = 3 [(nanopb).max_size = 40, (nanopb).fixed_length = true];
-}

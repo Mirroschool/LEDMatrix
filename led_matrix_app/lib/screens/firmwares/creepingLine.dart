@@ -2,13 +2,17 @@ import 'package:flutter/material.dart';
 
 import 'dart:typed_data';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:dio/dio.dart';
+import 'package:web_socket_channel/io.dart';
+import '../../proto/clock/clock.pb.dart';
 
-Uint8List utf8ToCP1251(String sourceString) {
-  var convertedBytes = Uint8List.fromList([33, 34, 35, 36, 255]);//List<int>();
+List<int> utf8ToCP1251(String sourceString) {
+  var convertedBytes = List<int>();
   sourceString.runes.forEach((int rune) {
-    var character = new String.fromCharCode(rune);
-    print(character);
+    if (rune <= 126) {
+      convertedBytes.add(rune);
+    } else if (1040 <= rune && rune <= 1103) {
+      convertedBytes.add(192 + rune - 1040);
+    }
   });
   return convertedBytes;
 }
@@ -21,18 +25,20 @@ class CreepingLine extends StatefulWidget {
 class _CreepingLineState extends State<CreepingLine> {
   String _ip;
 
-  Future<Response> setText(String text) async {
-    var uri = 'http://$_ip/modes/';
+  setText(String text) {
+    var uri = 'ws://$_ip/clock/ws';
+    var channel = IOWebSocketChannel.connect(uri);
+
+    var message = ClockMessage();
+    message.modeId = 1;
+
+    var cp1251Copepoints = utf8ToCP1251(text);
+    message.text = cp1251Copepoints +
+        new List<int>.filled(255 - cp1251Copepoints.length, 0, growable: false);
 
     print(text);
-
-    FormData formData = FormData.fromMap({
-      "mode_id": "1",
-      "text": text,
-    });
-    var response = await Dio().post(uri, data: formData);
-
-    return response;
+    channel.sink.add(message.writeToBuffer());
+    channel.sink.close();
   }
 
   @override
@@ -46,16 +52,37 @@ class _CreepingLineState extends State<CreepingLine> {
     _ip = (prefs.getString('ip') ?? "");
   }
 
+  final _formKey = GlobalKey<FormState>();
+  String _lineText;
+
   @override
   Widget build(BuildContext context) {
     return Container(
-      child: SizedBox(
-        width: double.infinity,
+      child: Form(
+        key: _formKey,
         // height: double.infinity,
-        child: RaisedButton(
-          onPressed: () async {
-            await setText("аку");
-          },
+        child: Column(
+          children: <Widget>[
+            TextFormField(
+              onChanged: (value) {
+                _lineText = value;
+              },
+              validator: (value) {
+                if (value.isEmpty) {
+                  return 'Введіть текст!';
+                }
+                return null;
+              },
+            ),
+            RaisedButton(
+              child: Text("Встановити текст"),
+              onPressed: () {
+                if (_formKey.currentState.validate()) {
+                  setText(_lineText);
+                }
+              },
+            )
+          ],
         ),
       ),
     );
