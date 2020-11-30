@@ -21,7 +21,7 @@ class _GameSelectionStatefulWidgetState
 
   _loadSettings() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    _channel = IOWebSocketChannel.connect('ws://${(prefs.getString('ip') ?? "")}/ws');
+    _channel = IOWebSocketChannel.connect('ws://${(prefs.getString('ip') ?? "")}/games/ws');
   }
 
 

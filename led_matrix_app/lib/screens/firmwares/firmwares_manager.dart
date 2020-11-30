@@ -28,6 +28,8 @@ class FirmwaresManager extends StatelessWidget {
         return AnimationSelectStatefulWidget();
       case "games":
         return GameSelectionStatefulWidget();
+      case "canvas":
+        return Text("Canvas");
 
     }
     return Container(
