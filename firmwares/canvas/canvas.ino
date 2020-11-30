@@ -53,6 +53,7 @@ void onEvent(AsyncWebSocket       *server,
 }
 
 void onSettings(AsyncWebServerRequest *request) {
+  Serial.println("Settings requested");
   char responseBuf[100];
   sprintf(
     responseBuf,

@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+message PixelMessage {
+  int32 x = 1;
+  int32 y = 2;
+
+  int32 red = 3;
+  int32 green = 4;
+  int32 blue = 5;
+}

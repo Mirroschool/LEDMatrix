@@ -113,11 +113,6 @@ PongGame game;
 
 AsyncWebSocket gamesWS("/games/ws");
 
-
-void notFound(AsyncWebServerRequest *request) {
-    request->send(404, "text/plain", "Not found");
-}
-
 void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
     AwsFrameInfo *info = (AwsFrameInfo*)arg;
     if (info->final && info->index == 0 && info->len == len && info->opcode == WS_TEXT) {
@@ -200,12 +195,24 @@ void onEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventTyp
   }
 }
 
+void onSettings(AsyncWebServerRequest *request) {
+  char responseBuf[100];
+  sprintf(
+    responseBuf,
+    "{\"modes\":[\"games\"],\"width\":\"%d\",\"height\":\"%d\"}", // format
+    MATRIX_WIDTH,
+    MATRIX_HEIGHT
+  );
+  request->send(200, "application/json", responseBuf);
+}
+
+
 void setup(){
     Serial.begin(115200);
     randomSeed(analogRead(A0));
     setupFastLED();
     setupWiFi("OpenWRT", "22446688");
-    
+    server.on("/settings/", onSettings);    
     gamesWS.onEvent(onEvent);
     server.addHandler(&gamesWS);
     server.begin();
