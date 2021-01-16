@@ -45,7 +45,7 @@ var NAVTREE =
 
 var NAVTREEINDEX =
 [
-""
+"_cylon_animation_8h.html#a0250ecff64984fc9dc7c51c800107e19"
 ];
 
 var SYNCONMSG = 'click to disable panel synchronisation';
